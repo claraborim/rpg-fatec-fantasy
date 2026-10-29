@@ -113,6 +113,10 @@ monstro criar_Monstro(const char *nome, int vida, int atq, int def, int xp, int 
     return m;
 }
 
+int xp_Necessario(int nivel) {
+    return 20 * nivel;
+}
+
 void mostrar_Personagem(personagem *j) {
     printf("\n-=-=- Ficha do Personagem -=-=-\n");
     printf("Nome:   %s\n", j->nome);
@@ -120,7 +124,7 @@ void mostrar_Personagem(personagem *j) {
     printf("Vida:   %d/%d\n", j->vida, j->vida_max);
     printf("Ataque: %d\n", j->atq);
     printf("Defesa: %d\n", j->def);
-    printf("XP:     %d\n", j->xp);
+    printf("XP:     %d/%d\n", j->xp, xp_Necessario(j->nivel));
     printf("Ouro:   %d\n", j->ouro);
 }
 
@@ -277,6 +281,30 @@ int calcular_Dano(int atq, int def) {
     return dano;
 }
 
+void subiu_Level(personagem *j, int xp) {
+    if (j->nivel >= 10 || xp <= 0) {
+        return;
+    }
+    
+    j->xp += xp;
+
+    while ((j->nivel < 10) && (j->xp >= xp_Necessario(j->nivel))) {
+        j->xp -= xp_Necessario(j->nivel);
+        j->nivel++;
+        j->vida_max += 8;
+        j->atq += 2;
+        j->def += 1;
+        j->vida = j->vida_max;
+
+        printf("\n*** %s subiu para o nível %d! ***\n", j->nome, j->nivel);
+        printf("Vida máx: %d | Ataque: %d | Defesa: %d (vida restaurada!)\n", j->vida_max, j->atq, j->def);
+    }
+
+    if (j->nivel >= 10) {
+        j->xp = 0;
+    }
+}
+
 int batalha(personagem *j, monstro *m) {
     printf("\n-=-=- %s apareceu! -=-=-\n", m->nome);
 
@@ -311,9 +339,10 @@ int batalha(personagem *j, monstro *m) {
     }
 
     printf("\n%s derrotou %s!\n", j->nome, m->nome);
-    j->xp += m->xp_morte;
+
     j->ouro += m->ouro_morte;
     printf("Você ganhou %d de XP e %d de ouro.\n", m->xp_morte, m->ouro_morte);
+    subiu_Level(j, m->xp_morte);
     continuar();
     return 1;
 }
@@ -338,7 +367,7 @@ int main() {
     mostrar_Inventario(&jogador);
     continuar();
 
-    monstro goblin = criar_Monstro("Goblin", 15, 6, 1, 10, 8);
+    monstro goblin = criar_Monstro("Goblin", 15, 6, 1, 50, 8);
 
     if (batalha(&jogador, &goblin)) {
         mostrar_Personagem(&jogador);
