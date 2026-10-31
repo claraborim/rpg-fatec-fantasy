@@ -124,7 +124,12 @@ void mostrar_Personagem(personagem *j) {
     printf("Vida:   %d/%d\n", j->vida, j->vida_max);
     printf("Ataque: %d\n", j->atq);
     printf("Defesa: %d\n", j->def);
-    printf("XP:     %d/%d\n", j->xp, xp_Necessario(j->nivel));
+    if (j->nivel < 10) {
+        printf("XP:     %d/%d\n", j->xp, xp_Necessario(j->nivel));
+    }
+    else {
+        printf("XP:     MÁXIMO\n");
+    }
     printf("Ouro:   %d\n", j->ouro);
 }
 
@@ -347,6 +352,55 @@ int batalha(personagem *j, monstro *m) {
     return 1;
 }
 
+void explorar(personagem *j){
+    int d12 = rolar_D12();
+
+    if (d12 == 1) {
+    
+    }
+    else if (d12 == 2 || d12 == 3) {
+
+    }
+    else if (d12 == 4 || d12 == 5) {
+
+    }
+    else {
+        
+    }
+}
+
+void menu(personagem *j) {
+    int jogando = 1;
+
+    while (jogando) {
+        printf("\n-=-=- MENU -=-=-\n");
+        printf("1. Explorar\n2. Ver Ficha\n3. Inventário\n4. Sair\n");
+        printf("Opção: ");
+        int opcao = ler_Inteiro();
+
+        switch (opcao)
+        {
+        case 1:
+            explorar(j);
+            break;
+        case 2:
+            mostrar_Personagem(j);
+            continuar();
+            break;
+        case 3:
+            mostrar_Inventario(j);
+            continuar();
+            break;
+        case 4:
+            jogando = 0;
+            break;
+        default:
+            printf("\nOpção Inválida!\n");
+            break;
+        }
+    }
+}
+
 int main() {
     // inclui caracteres/acentos ptbr
     setlocale(LC_ALL, "portuguese");
@@ -359,21 +413,10 @@ int main() {
     printf("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n");
 
     personagem jogador;
+
     criar_Personagem(&jogador);
-    mostrar_Personagem(&jogador);
-    continuar();
-
     adicionar_Item(&jogador, "Poção de Cura", POCAO, 10, 5);
-    mostrar_Inventario(&jogador);
-    continuar();
-
-    monstro goblin = criar_Monstro("Goblin", 15, 6, 1, 50, 8);
-
-    if (batalha(&jogador, &goblin)) {
-        mostrar_Personagem(&jogador);
-    } else {
-        printf("Fim de jogo.\n");
-    }
+    menu(&jogador);
 
     liberar_Inventario(&jogador);
     return 0;
