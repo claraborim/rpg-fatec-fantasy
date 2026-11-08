@@ -4,9 +4,6 @@
 #include <time.h>
 #include <locale.h>
 
-void limpar_Tela() {
-}
-
 // dado de 1 a 12
 int rolar_D12() {
     return rand() % 12 + 1;
@@ -101,18 +98,18 @@ void criar_Personagem(personagem *j) {
         opcao = ler_Inteiro();
 
         switch (opcao) {
-        case 1:
-            strncpy(j->nome, "Clara", sizeof(j->nome) - 1);
-            break;
-        case 2:
-            strncpy(j->nome, "Felipe", sizeof(j->nome) - 1);
-            break;
-        case 3:
-            strncpy(j->nome, "Miguel", sizeof(j->nome) - 1);
-            break;
-        default:
-            printf("\n[!] Opção inválida! Escolha entre 1 a 3.\n");
-            break;
+            case 1:
+                strncpy(j->nome, "Clara", sizeof(j->nome) - 1);
+                break;
+            case 2:
+                strncpy(j->nome, "Felipe", sizeof(j->nome) - 1);
+                break;
+            case 3:
+                strncpy(j->nome, "Miguel", sizeof(j->nome) - 1);
+                break;
+            default:
+                printf("\n[!] Opção inválida! Escolha entre 1 a 3.\n");
+                break;
         }
     } while (opcao < 1 || opcao > 3);
 
@@ -389,28 +386,28 @@ int batalha(personagem *j, monstro *m) {
             int opcao = ler_Inteiro();
 
             switch (opcao) {
-            case 1: {
-                printf("\n  >>> %s ataca!\n", j->nome);
-                int dano = calcular_Dano(j->atq, m->def);
-                m->vida -= dano;
-                if (m->vida < 0) {
-                    m->vida = 0;
+                case 1: {
+                    printf("\n  >>> %s ataca!\n", j->nome);
+                    int dano = calcular_Dano(j->atq, m->def);
+                    m->vida -= dano;
+                    if (m->vida < 0) {
+                        m->vida = 0;
+                    }
+                    printf("    -> Dano causado: %d | %s: %d de vida\n", dano, m->nome, m->vida);
+                    acao_feita = 1;
+                    break;
                 }
-                printf("    -> Dano causado: %d | %s: %d de vida\n", dano, m->nome, m->vida);
-                acao_feita = 1;
-                break;
-            }
-            case 2:
-                printf("\n  [#] %s se prepara para se defender!\n", j->nome);
-                defendendo = 1;
-                acao_feita = 1;
-                break;
-            case 3:
-                acao_feita = usar_Item(j);
-                break;
-            default:
-                printf("\n  [!] Opção inválida!\n");
-                break;
+                case 2:
+                    printf("\n  [#] %s se prepara para se defender!\n", j->nome);
+                    defendendo = 1;
+                    acao_feita = 1;
+                    break;
+                case 3:
+                    acao_feita = usar_Item(j);
+                    break;
+                default:
+                    printf("\n  [!] Opção inválida!\n");
+                    break;
             }
         }
 
@@ -432,9 +429,6 @@ int batalha(personagem *j, monstro *m) {
         }
         printf("    -> Dano causado: %d | %s: %d/%d de vida\n", dano, j->nome, j->vida, j->vida_max);
         continuar();
-        if (j->vida > 0) {
-            limpar_Tela();
-        }
     }
 
     if (j->vida == 0) {
@@ -516,18 +510,138 @@ void liberar_Fila(fila *f) {
     }
 }
 
+int curar_Personagem(personagem *j, int quantidade) {
+    int antes = j->vida;
+
+    j->vida += quantidade;
+    if (j->vida > j->vida_max) {
+        j->vida = j->vida_max;
+    }
+
+    return j->vida - antes;
+}
+
+void evento_Armadilha(personagem *j) {
+    int dano = rand() % 4 + 3;
+    int tipo = rand() % 4;
+    const char *situacao;
+    const char *sorte;
+
+    switch (tipo) {
+        case 0:
+            situacao = "Você estava entrando na Fatec quando um monstro saiu do meio das árvores, te desceu a porrada e foi embora como se nada tivesse acontecido!";
+            sorte = "Por sorte, você ouviu o barulho nas árvores e entrou correndo antes que o monstro te alcançasse.";
+            break;
+        case 1:
+            situacao = "Você foi pegar sua mochila do chão e um escorpião saiu de dentro... ele te picou!";
+            sorte = "Por sorte, você viu o escorpião a tempo e ele foi embora sem te picar.";
+            break;
+        case 2:
+            situacao = "Você se apoiou na grade do lago e acabou caindo na água podre... o cheiro vai grudar em você pelo resto do dia!";
+            sorte = "Por sorte, você se desequilibrou, mas se segurou na grade e não caiu.";
+            break;
+        default:
+            situacao = "Você foi atravessar do P10 para o P11, mas um carro surgiu do além e te atropelou!";
+            sorte = "Por sorte, o carro freou a tempo e só te deu um susto.";
+            break;
+    }
+
+    printf("\n+--------------- ARMADILHA! ---------------+\n");
+    printf("  [!] %s\n", situacao);
+
+    // garante que sobre pelo menos 1 de vida
+    if (dano >= j->vida) {
+        dano = j->vida - 1;
+    }
+
+    if (dano > 0) {
+        j->vida -= dano;
+        printf("  -> Você perdeu %d de vida! (%d/%d)\n", dano, j->vida, j->vida_max);
+    }
+    else {
+        printf("  -> %s\n", sorte);
+    }
+
+    continuar();
+}
+
+void evento_Local(personagem *j) {
+    int local = rand() % 3;
+
+    printf("\n+------------- LOCAL DA FATEC -------------+\n");
+
+    switch (local) {
+        case 0: {
+            printf("  [@] Você passa na cantina e come um baffs bem recheado e quentinho.\n");
+            int curou = curar_Personagem(j, 15);
+            if (curou > 0) {
+                printf("  [+] Você recuperou %d de vida! (%d/%d)\n", curou, j->vida, j->vida_max);
+            }
+            else {
+                printf("  [i] Delicioso, mas sua vida já estava cheia.\n");
+            }
+            break;
+        }
+        case 1:
+            printf("  [@] Na biblioteca, você acha dinheiro esquecido dentro de um livro.\n");
+            j->ouro += 10;
+            printf("  [+] Você ganhou 10 de ouro! (total: %d)\n", j->ouro);
+            break;
+        case 2: {
+            printf("  [@] O bebedouro estava funcionando hoje e a água não estava podre!\n");
+            int curou = curar_Personagem(j, 10);
+            if (curou > 0) {
+                printf("  [+] Você recuperou %d de vida! (%d/%d)\n", curou, j->vida, j->vida_max);
+            }
+            else {
+                printf("  [i] Gosto razoável, mas sua vida já estava cheia.\n");
+            }
+            break;
+        }
+    }
+
+    continuar();
+}
+
+void evento_Bau(personagem *j) {
+    int sorte = rolar_D12();
+
+    printf("\n+--------------- BAÚ ENCONTRADO ---------------+\n");
+    printf("  [$] Você encontra um baú esquecido numa sala vazia!\n");
+
+    if (sorte <= 4) {
+        int ouro = rand() % 11 + 5;
+        j->ouro += ouro;
+        printf("  [+] Dentro tinha %d de ouro! (total: %d)\n", ouro, j->ouro);
+    }
+    else if (sorte <= 8) {
+        adicionar_Item(j, "Poção de Cura", POCAO, 30, 5);
+        printf("  [+] Dentro tinha uma Poção de Cura!\n");
+    }
+    else if (sorte <= 10) {
+        adicionar_Item(j, "Teclado Mecânico", ARMA, 3, 20);
+        printf("  [+] Dentro tinha um Teclado Mecânico! (Ataque +3)\n");
+    }
+    else {
+        adicionar_Item(j, "Jaleco Reforçado", ARMADURA, 2, 20);
+        printf("  [+] Dentro tinha um Jaleco Reforçado! (Defesa +2)\n");
+    }
+
+    continuar();
+}
+
 int explorar(personagem *j, fila *f) {
     int d12 = rolar_D12();
     printf("\n[EXPLORAR] Você explora a Fatec... (d12 = %d)\n", d12);
 
-    if (d12 == 1) {
-        // TODO: armadilha
+    if (d12 == 1 || d12 == 2) {
+        evento_Armadilha(j);
     }
-    else if (d12 == 2 || d12 == 3) {
-        // TODO: local aleatório da Fatec
+    else if (d12 == 3 || d12 == 4) {
+        evento_Local(j);
     }
-    else if (d12 == 4 || d12 == 5) {
-        // TODO: sala com baú
+    else if (d12 == 5 || d12 == 6) {
+        evento_Bau(j);
     }
     else {
         monstro *proximo = ver_Primeiro(f);
@@ -554,8 +668,6 @@ void menu(personagem *j, fila *f) {
     int jogando = 1;
 
     while (jogando) {
-        limpar_Tela();
-
         monstro *proximo = ver_Primeiro(f);
         int dimas_liberado = (proximo != NULL && proximo->chefe);
 
@@ -570,49 +682,48 @@ void menu(personagem *j, fila *f) {
         printf(">> Opção: ");
         int opcao = ler_Inteiro();
 
-        switch (opcao)
-        {
-        case 1:
-            if (!explorar(j, f)) {
-                printf("\n=============== FIM DE JOGO ===============\n");
+        switch (opcao) {
+            case 1:
+                if (!explorar(j, f)) {
+                    printf("\n=============== FIM DE JOGO ===============\n");
+                    jogando = 0;
+                }
+                break;
+            case 2:
+                mostrar_Personagem(j);
+                continuar();
+                break;
+            case 3:
+                mostrar_Inventario(j);
+                continuar();
+                break;
+            case 4:
                 jogando = 0;
-            }
-            break;
-        case 2:
-            mostrar_Personagem(j);
-            continuar();
-            break;
-        case 3:
-            mostrar_Inventario(j);
-            continuar();
-            break;
-        case 4:
-            jogando = 0;
-            break;
-        case 5:
-            if (dimas_liberado) {
-                monstro chefe = *proximo;
+                break;
+            case 5:
+                if (dimas_liberado) {
+                    monstro chefe = *proximo;
 
-                if (batalha(j, &chefe)) {
-                    desenfileirar_Monstro(f);
-                    printf("\n*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*\n");
-                    printf("*  VOCÊ DERROTOU O DIMAS! FIM DE JOGO!  *\n");
-                    printf("*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*\n\n");
+                    if (batalha(j, &chefe)) {
+                        desenfileirar_Monstro(f);
+                        printf("\n*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*\n");
+                        printf("*  VOCÊ DERROTOU O DIMAS! FIM DE JOGO!  *\n");
+                        printf("*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*\n\n");
+                    }
+                    else {
+                        printf("\n=============== FIM DE JOGO ===============\n\n");
+                    }
+                    jogando = 0;
                 }
                 else {
-                    printf("\n=============== FIM DE JOGO ===============\n\n");
+                    printf("\n  [!] Opção Inválida!\n");
+                    continuar();
                 }
-                jogando = 0;
-            }
-            else {
+                break;
+            default:
                 printf("\n  [!] Opção Inválida!\n");
                 continuar();
-            }
-            break;
-        default:
-            printf("\n  [!] Opção Inválida!\n");
-            continuar();
-            break;
+                break;
         }
     }
 }
