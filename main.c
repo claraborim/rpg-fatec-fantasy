@@ -4,6 +4,7 @@
 #include <time.h>
 #include <locale.h>
 
+// dado de 1 a 12
 int rolar_D12() {
     return rand() % 12 + 1;
 }
@@ -34,13 +35,35 @@ typedef struct Personagem {
 } personagem;
 
 typedef struct Monstro {
-    char nome[20];
+    char nome[60];
     int vida;
     int atq;
     int def;
     int xp_morte;
     int ouro_morte;
+    int chefe;
 } monstro;
+
+const monstro listaMonstros[] = {
+    { "Robson, o Rei da Confusão Mental", 16, 5, 1, 50, 15, 0 },
+    { "Serjão, o Dono dos Cabarés", 24, 7, 3, 50, 20, 0 },
+    { "Cris, a Rainha do Ar-Condicionado", 26, 12, 3, 50, 25, 0 },
+    { "Fábio, o Mestre do Sono Profundo", 50, 13, 5, 50, 30, 0 },
+    { "Dimas, o Ceifador de Médias", 110, 22, 7, 0, 0, 1 }
+};
+
+#define TOTAL_MONSTROS ((int)(sizeof(listaMonstros) / sizeof(listaMonstros[0])))
+
+typedef struct NoMonstro {
+    monstro dados;
+    struct NoMonstro *prox;
+} no_monstro;
+
+typedef struct Fila {
+    no_monstro *inicio;
+    no_monstro *fim;
+    int tamanho;
+} fila;
 
 // pausa nos diálogos, turnos, etc
 void continuar() {
@@ -97,20 +120,6 @@ void criar_Personagem(personagem *j) {
     j->xp = 0;
     j->ouro = 20;
     j->inventario = NULL;
-}
-
-monstro criar_Monstro(const char *nome, int vida, int atq, int def, int xp, int ouro) {
-    monstro m;
-
-    strncpy(m.nome, nome, sizeof(m.nome) - 1);
-    m.nome[sizeof(m.nome) - 1] = '\0';
-    m.vida = vida;
-    m.atq = atq;
-    m.def = def;
-    m.xp_morte = xp;
-    m.ouro_morte = ouro;
-
-    return m;
 }
 
 int xp_Necessario(int nivel) {
@@ -296,9 +305,9 @@ void subiu_Level(personagem *j, int xp) {
     while ((j->nivel < 10) && (j->xp >= xp_Necessario(j->nivel))) {
         j->xp -= xp_Necessario(j->nivel);
         j->nivel++;
-        j->vida_max += 8;
-        j->atq += 2;
-        j->def += 1;
+        j->vida_max += 10;
+        j->atq += 3;
+        j->def += 2;
         j->vida = j->vida_max;
 
         printf("\n*** %s subiu para o nível %d! ***\n", j->nome, j->nivel);
@@ -352,36 +361,128 @@ int batalha(personagem *j, monstro *m) {
     return 1;
 }
 
-void explorar(personagem *j){
-    int d12 = rolar_D12();
+void criar_Fila(fila *f) {
+    f->inicio = NULL;
+    f->fim = NULL;
+    f->tamanho = 0;
+}
 
-    if (d12 == 1) {
-    
+int fila_Vazia(fila *f) {
+    return f->inicio == NULL;
+}
+
+int enfileirar_Monstro(fila *f, monstro m) {
+    no_monstro *novo = malloc(sizeof(no_monstro));
+
+    if (novo == NULL) {
+        printf("Erro: sem memória!\n");
+        return 0;
     }
-    else if (d12 == 2 || d12 == 3) {
 
-    }
-    else if (d12 == 4 || d12 == 5) {
+    novo->dados = m;
+    novo->prox = NULL;
 
+     if (f->fim == NULL) {
+        f->inicio = novo;
     }
     else {
-        
+        f->fim->prox = novo;
+    }
+
+    f->fim = novo;
+    f->tamanho++;
+
+    return 1;
+}
+
+int desenfileirar_Monstro(fila *f) {
+    if (f->inicio == NULL) {
+        return 0;
+    }
+
+    no_monstro *removido = f->inicio;
+    f->inicio = removido->prox;
+
+    if (f->inicio == NULL) {
+        f->fim = NULL;
+    }
+
+    free(removido);
+    f->tamanho--;
+
+    return 1;
+}
+
+monstro *ver_Primeiro(fila *f) {
+    if (f->inicio == NULL) {
+        return NULL;
+    }
+
+    return &f->inicio->dados;
+}
+
+void liberar_Fila(fila *f) {
+    while (desenfileirar_Monstro(f)) {
     }
 }
 
-void menu(personagem *j) {
+int explorar(personagem *j, fila *f) {
+    int d12 = rolar_D12();
+    printf("\nVocê explora a Fatec... (d12 = %d)\n", d12);
+
+    if (d12 == 1) {
+        // TODO: armadilha
+    }
+    else if (d12 == 2 || d12 == 3) {
+        // TODO: local aleatório da Fatec
+    }
+    else if (d12 == 4 || d12 == 5) {
+        // TODO: sala com baú
+    }
+    else {
+        monstro *proximo = ver_Primeiro(f);
+
+        if (proximo == NULL || proximo->chefe) {
+            printf("Você sente uma presença poderosa... o Dimas te espera.\n");
+        }
+        else {
+            monstro copia = *proximo;
+
+            if (!batalha(j, &copia)) {
+                return 0;
+            }
+
+            desenfileirar_Monstro(f);
+        }
+    }
+
+    return 1;
+}
+
+void menu(personagem *j, fila *f) {
     int jogando = 1;
 
     while (jogando) {
+        monstro *proximo = ver_Primeiro(f);
+        int dimas_liberado = (proximo != NULL && proximo->chefe);
+
         printf("\n-=-=- MENU -=-=-\n");
         printf("1. Explorar\n2. Ver Ficha\n3. Inventário\n4. Sair\n");
+
+        if (dimas_liberado) {
+            printf("5. Enfrentar o Dimas\n");
+        }
+
         printf("Opção: ");
         int opcao = ler_Inteiro();
 
         switch (opcao)
         {
         case 1:
-            explorar(j);
+            if (!explorar(j, f)) {
+                printf("\nFim de jogo.\n");
+                jogando = 0;
+            }
             break;
         case 2:
             mostrar_Personagem(j);
@@ -394,6 +495,23 @@ void menu(personagem *j) {
         case 4:
             jogando = 0;
             break;
+        case 5:
+            if (dimas_liberado) {
+                monstro chefe = *proximo;
+
+                if (batalha(j, &chefe)) {
+                    desenfileirar_Monstro(f);
+                    printf("\n*** VOCÊ DERROTOU O DIMAS! FIM DE JOGO! ***\n");
+                }
+                else {
+                    printf("\nFim de jogo.\n");
+                }
+                jogando = 0;
+            }
+            else {
+                printf("\nOpção Inválida!\n");
+            }
+            break;
         default:
             printf("\nOpção Inválida!\n");
             break;
@@ -402,7 +520,6 @@ void menu(personagem *j) {
 }
 
 int main() {
-    // inclui caracteres/acentos ptbr
     setlocale(LC_ALL, "portuguese");
 
     // inicializa números aleatórios para o dado (d12)
@@ -414,10 +531,23 @@ int main() {
 
     personagem jogador;
 
-    criar_Personagem(&jogador);
-    adicionar_Item(&jogador, "Poção de Cura", POCAO, 10, 5);
-    menu(&jogador);
+    fila filaMonstros;
 
+    criar_Personagem(&jogador);
+    adicionar_Item(&jogador, "Poção de Cura", POCAO, 30, 5);
+
+    criar_Fila(&filaMonstros);
+    for (int i = 0; i < TOTAL_MONSTROS; i++) {
+        if (!enfileirar_Monstro(&filaMonstros, listaMonstros[i])) {
+            liberar_Fila(&filaMonstros);
+            liberar_Inventario(&jogador);
+            return 1;
+        }
+    }
+
+    menu(&jogador, &filaMonstros);
+
+    liberar_Fila(&filaMonstros);
     liberar_Inventario(&jogador);
     return 0;
 }
