@@ -4,6 +4,9 @@
 #include <time.h>
 #include <locale.h>
 
+void limpar_Tela() {
+}
+
 // dado de 1 a 12
 int rolar_D12() {
     return rand() % 12 + 1;
@@ -45,11 +48,11 @@ typedef struct Monstro {
 } monstro;
 
 const monstro listaMonstros[] = {
-    { "Robson, o Rei da Confusão Mental", 16, 5, 1, 50, 15, 0 },
-    { "Serjão, o Dono dos Cabarés", 24, 7, 3, 50, 20, 0 },
-    { "Cris, a Rainha do Ar-Condicionado", 26, 12, 3, 50, 25, 0 },
-    { "Fábio, o Mestre do Sono Profundo", 50, 13, 5, 50, 30, 0 },
-    { "Dimas, o Ceifador de Médias", 110, 22, 7, 0, 0, 1 }
+    { "Fábio, o Mestre do Sono Profundo", 16, 5, 1, 50, 15, 0 },
+    { "Cris, a Rainha do Ar-Condicionado", 24, 7, 3, 50, 20, 0 },
+    { "Robson, o Rei da Confusão Mental", 26, 12, 3, 50, 25, 0 },
+    { "Serjão, o Dono dos Cabarés", 60, 15, 5, 50, 30, 0 },
+    { "Dimas, o Ceifador de Médias", 80, 16, 6, 0, 0, 1 }
 };
 
 #define TOTAL_MONSTROS ((int)(sizeof(listaMonstros) / sizeof(listaMonstros[0])))
@@ -67,18 +70,20 @@ typedef struct Fila {
 
 // pausa nos diálogos, turnos, etc
 void continuar() {
-    printf("\n[ENTER] para continuar...");
-    while (getchar() != '\n');
+    int c;
+
+    printf("\n  ... [ENTER] para continuar ...");
+    while ((c = getchar()) != '\n' && c != EOF);
 }
 
 // validação para caso o usuário insira um caractere
 int ler_Inteiro() {
-    int valor;
+    int valor, c;
 
     if (scanf("%d", &valor) != 1) {
         valor = 0;
     }
-    while (getchar() != '\n');
+    while ((c = getchar()) != '\n' && c != EOF);
 
     return valor;
 }
@@ -87,9 +92,12 @@ void criar_Personagem(personagem *j) {
     int opcao;
 
     do {
-        printf("\nEscolha o nome do personagem:\n");
-        printf("1 = Clara\n2 = Felipe\n3 = Miguel\n");
-        printf("Opção: ");
+        printf("\n+=========== ESCOLHA SEU HERÓI ===========+\n");
+        printf("|   [1] Clara                             |\n");
+        printf("|   [2] Felipe                            |\n");
+        printf("|   [3] Miguel                            |\n");
+        printf("+=========================================+\n");
+        printf(">> Opção: ");
         opcao = ler_Inteiro();
 
         switch (opcao) {
@@ -103,7 +111,7 @@ void criar_Personagem(personagem *j) {
             strncpy(j->nome, "Miguel", sizeof(j->nome) - 1);
             break;
         default:
-            printf("\nOpção inválida! Escolha entre 1 a 3.\n");
+            printf("\n[!] Opção inválida! Escolha entre 1 a 3.\n");
             break;
         }
     } while (opcao < 1 || opcao > 3);
@@ -127,19 +135,15 @@ int xp_Necessario(int nivel) {
 }
 
 void mostrar_Personagem(personagem *j) {
-    printf("\n-=-=- Ficha do Personagem -=-=-\n");
-    printf("Nome:   %s\n", j->nome);
-    printf("Nível:  %d\n", j->nivel);
-    printf("Vida:   %d/%d\n", j->vida, j->vida_max);
-    printf("Ataque: %d\n", j->atq);
-    printf("Defesa: %d\n", j->def);
-    if (j->nivel < 10) {
-        printf("XP:     %d/%d\n", j->xp, xp_Necessario(j->nivel));
-    }
-    else {
-        printf("XP:     MÁXIMO\n");
-    }
-    printf("Ouro:   %d\n", j->ouro);
+    printf("\n+======== FICHA DO PERSONAGEM ========+\n");
+    printf("  @  Nome   : %s\n", j->nome);
+    printf("  +  Nível  : %d\n", j->nivel);
+    printf("  <3 Vida   : %d/%d\n", j->vida, j->vida_max);
+    printf("  /  Ataque : %d\n", j->atq);
+    printf("  #  Defesa : %d\n", j->def);
+    printf("  *  XP     : %d/%d\n", j->xp, xp_Necessario(j->nivel));
+    printf("  $  Ouro   : %d\n", j->ouro);
+    printf("+=====================================+\n");
 }
 
 // cria o nó e devolve o endereço
@@ -165,7 +169,7 @@ void adicionar_Item(personagem *j, const char *nome, TipoItem tipo, int efeito, 
     // chama a função para criar o nó
     item *novo = criar_Item(nome, tipo, efeito, valor);
     if (novo == NULL) {
-        printf("Erro: sem memória!\n");
+        printf("[ERRO] Sem memória!\n");
         return;
     }
 
@@ -203,7 +207,7 @@ int remover_Item(personagem *j, const char *nome) {
 
     // se não foi encontrado na lista, retorna 0
     if (atual == NULL) {
-        printf("Esse item não existe.\n");
+        printf("[!] Esse item não existe.\n");
         return 0;
     }
 
@@ -224,18 +228,18 @@ int remover_Item(personagem *j, const char *nome) {
 void mostrar_Inventario(personagem *j) {
     const char *tipos[] = {"Arma", "Armadura", "Poção"};
 
-    printf("\n-=-=- Inventário -=-=-\n");
+    printf("\n+============ INVENTÁRIO ============+\n");
 
     // se a cabeça for NULL, o inventário está vazio
     if (j->inventario == NULL) {
-        printf("(vazio)\n");
+        printf("\n  [!] Inventário vazio!\n");
         return;
     }
 
     int i = 1;
 
     for (item *aux = j->inventario; aux != NULL; aux = aux->prox) {
-        printf("%d. [%s] %s | ", i++, tipos[aux->tipo], aux->nome);
+        printf("  %d. [%s] %s  >>  ", i++, tipos[aux->tipo], aux->nome);
 
         switch (aux->tipo) {
             case ARMA:
@@ -249,7 +253,7 @@ void mostrar_Inventario(personagem *j) {
                 break;
         }
 
-        printf(" | Valor: %d ouro(s)\n", aux->valor);
+        printf("  ($ %d ouro(s))\n", aux->valor);
     }
 }
 
@@ -275,7 +279,7 @@ int calcular_Dano(int atq, int def) {
     int d12 = rolar_D12();
 
     if (d12 == 1) {
-        printf(" (d12 = 1) Errou o ataque!\n");
+        printf("    [d12 = 1]  Errou o ataque! (miss)\n");
         return 0;
     }
 
@@ -285,24 +289,24 @@ int calcular_Dano(int atq, int def) {
     }
 
     if (d12 == 12) {
-        printf(" (d12 = 12) Acerto crítico!\n");
+        printf("    [d12 = 12]  *** ACERTO CRÍTICO! ***\n");
         dano *= 2;
     }
     else {
-        printf(" (d12 = %d)\n", d12);
+        printf("    [d12 = %d]\n", d12);
     }
 
     return dano;
 }
 
 void subiu_Level(personagem *j, int xp) {
-    if (j->nivel >= 10 || xp <= 0) {
+    if (xp <= 0) {
         return;
     }
     
     j->xp += xp;
 
-    while ((j->nivel < 10) && (j->xp >= xp_Necessario(j->nivel))) {
+    while (j->xp >= xp_Necessario(j->nivel)) {
         j->xp -= xp_Necessario(j->nivel);
         j->nivel++;
         j->vida_max += 10;
@@ -310,52 +314,138 @@ void subiu_Level(personagem *j, int xp) {
         j->def += 2;
         j->vida = j->vida_max;
 
-        printf("\n*** %s subiu para o nível %d! ***\n", j->nome, j->nivel);
-        printf("Vida máx: %d | Ataque: %d | Defesa: %d (vida restaurada!)\n", j->vida_max, j->atq, j->def);
-    }
-
-    if (j->nivel >= 10) {
-        j->xp = 0;
+        printf("\n  *.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*\n");
+        printf("  *   LEVEL UP!  %s chegou ao nível %d!\n", j->nome, j->nivel);
+        printf("  *   Vida máx: %d | Ataque: %d | Defesa: %d\n  *   (vida restaurada!)\n", j->vida_max, j->atq, j->def);
+        printf("  *.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*\n");
     }
 }
 
+int usar_Item(personagem *j) {
+    if (j->inventario == NULL) {
+        printf("\n  [!] Inventário vazio!\n");
+        return 0;
+    }
+
+    mostrar_Inventario(j);
+    printf("  0. Voltar\n>> Escolha o item: ");
+    int escolha = ler_Inteiro();
+
+    if (escolha < 1) {
+        return 0;
+    }
+
+    // anda até o nó do número escolhido
+    item *aux = j->inventario;
+    for (int i = 1; aux != NULL && i < escolha; i++) {
+        aux = aux->prox;
+    }
+
+    if (aux == NULL) {
+        printf("\n  [!] Item inválido!\n");
+        return 0;
+    }
+
+    if (aux->tipo != POCAO) {
+        printf("\n  [!] Só poções podem ser usadas em batalha.\n");
+        return 0;
+    }
+
+    if (j->vida == j->vida_max) {
+        printf("\n  [!] Sua vida já está cheia!\n");
+        return 0;
+    }
+
+    // copia o nome antes de liberar o nó
+    char nome[20];
+    snprintf(nome, sizeof(nome), "%s", aux->nome);
+
+    int antes = j->vida;
+    j->vida += aux->efeito;
+    if (j->vida > j->vida_max) {
+        j->vida = j->vida_max;
+    }
+
+    printf("\n  [+] %s usou %s e recuperou %d de vida! (%d/%d)\n",
+           j->nome, nome, j->vida - antes, j->vida, j->vida_max);
+
+    remover_Item(j, nome);
+    return 1;
+}
+
 int batalha(personagem *j, monstro *m) {
-    printf("\n-=-=- %s apareceu! -=-=-\n", m->nome);
+    printf("\n<<<<<<<<<<<<<<< BATALHA >>>>>>>>>>>>>>>\n !!! %s apareceu !!!\n", m->nome);
 
     while (j->vida > 0 && m->vida > 0) {
-        printf("\n%s ataca:\n", j->nome);
-        int dano = calcular_Dano(j->atq, m->def);
-        m->vida -= dano;
-        if (m->vida < 0) {
-            m->vida = 0;
+        int defendendo = 0;
+        int acao_feita = 0;
+
+        printf("\n-----------------------------------------------------------------------\n [%s] Vida: %d/%d   x   [%s] Vida: %d\n-----------------------------------------------------------------------\n",
+               j->nome, j->vida, j->vida_max, m->nome, m->vida);
+
+        // repete o menu até o jogador fazer uma ação que gaste o turno
+        while (!acao_feita) {
+            printf("\n  [1] Atacar\n  [2] Defender\n  [3] Inventário\n>> Opção: ");
+            int opcao = ler_Inteiro();
+
+            switch (opcao) {
+            case 1: {
+                printf("\n  >>> %s ataca!\n", j->nome);
+                int dano = calcular_Dano(j->atq, m->def);
+                m->vida -= dano;
+                if (m->vida < 0) {
+                    m->vida = 0;
+                }
+                printf("    -> Dano causado: %d | %s: %d de vida\n", dano, m->nome, m->vida);
+                acao_feita = 1;
+                break;
+            }
+            case 2:
+                printf("\n  [#] %s se prepara para se defender!\n", j->nome);
+                defendendo = 1;
+                acao_feita = 1;
+                break;
+            case 3:
+                acao_feita = usar_Item(j);
+                break;
+            default:
+                printf("\n  [!] Opção inválida!\n");
+                break;
+            }
         }
-        printf(" Dano causado: %d | %s: %d de vida\n", dano, m->nome, m->vida);
 
         if (m->vida == 0) {
             break;
         }
 
-        continuar();
+        printf("\n  <<< %s ataca!\n", m->nome);
+        int dano = calcular_Dano(m->atq, j->def);
 
-        printf("\n%s ataca:\n", m->nome);
-        dano = calcular_Dano(m->atq, j->def);
+        if (defendendo && dano > 1) {
+            dano = (dano + 1) / 2;
+            printf("    [#] A defesa reduziu o dano!\n");
+        }
+
         j->vida -= dano;
         if (j->vida < 0) {
             j->vida = 0;
         }
-        printf(" Dano causado: %d | %s: %d/%d de vida\n", dano, j->nome, j->vida, j->vida_max);
+        printf("    -> Dano causado: %d | %s: %d/%d de vida\n", dano, j->nome, j->vida, j->vida_max);
         continuar();
+        if (j->vida > 0) {
+            limpar_Tela();
+        }
     }
 
     if (j->vida == 0) {
-        printf("\n%s foi derrotado...\n", j->nome);
+        printf("\n  x_x  %s foi derrotado...\n", j->nome);
         return 0;
     }
 
-    printf("\n%s derrotou %s!\n", j->nome, m->nome);
+    printf("\n*** VITÓRIA! %s derrotou %s! ***\n", j->nome, m->nome);
 
     j->ouro += m->ouro_morte;
-    printf("Você ganhou %d de XP e %d de ouro.\n", m->xp_morte, m->ouro_morte);
+    printf("  [+] Você ganhou %d de XP e %d de ouro.\n", m->xp_morte, m->ouro_morte);
     subiu_Level(j, m->xp_morte);
     continuar();
     return 1;
@@ -375,7 +465,7 @@ int enfileirar_Monstro(fila *f, monstro m) {
     no_monstro *novo = malloc(sizeof(no_monstro));
 
     if (novo == NULL) {
-        printf("Erro: sem memória!\n");
+        printf("[ERRO] Sem memória!\n");
         return 0;
     }
 
@@ -428,7 +518,7 @@ void liberar_Fila(fila *f) {
 
 int explorar(personagem *j, fila *f) {
     int d12 = rolar_D12();
-    printf("\nVocê explora a Fatec... (d12 = %d)\n", d12);
+    printf("\n[EXPLORAR] Você explora a Fatec... (d12 = %d)\n", d12);
 
     if (d12 == 1) {
         // TODO: armadilha
@@ -443,7 +533,8 @@ int explorar(personagem *j, fila *f) {
         monstro *proximo = ver_Primeiro(f);
 
         if (proximo == NULL || proximo->chefe) {
-            printf("Você sente uma presença poderosa... o Dimas te espera.\n");
+            printf("\n  [!!!] Você sente uma presença poderosa... o Dimas te espera.\n");
+            continuar();
         }
         else {
             monstro copia = *proximo;
@@ -463,24 +554,27 @@ void menu(personagem *j, fila *f) {
     int jogando = 1;
 
     while (jogando) {
+        limpar_Tela();
+
         monstro *proximo = ver_Primeiro(f);
         int dimas_liberado = (proximo != NULL && proximo->chefe);
 
-        printf("\n-=-=- MENU -=-=-\n");
-        printf("1. Explorar\n2. Ver Ficha\n3. Inventário\n4. Sair\n");
+        printf("\n+============== MENU ==============+\n");
+        printf("   [1] Explorar\n   [2] Ver Ficha\n   [3] Inventário\n   [4] Sair\n");
 
         if (dimas_liberado) {
-            printf("5. Enfrentar o Dimas\n");
+            printf("   [5] Enfrentar o Dimas  <!>\n");
         }
 
-        printf("Opção: ");
+        printf("+==================================+\n");
+        printf(">> Opção: ");
         int opcao = ler_Inteiro();
 
         switch (opcao)
         {
         case 1:
             if (!explorar(j, f)) {
-                printf("\nFim de jogo.\n");
+                printf("\n=============== FIM DE JOGO ===============\n");
                 jogando = 0;
             }
             break;
@@ -501,19 +595,23 @@ void menu(personagem *j, fila *f) {
 
                 if (batalha(j, &chefe)) {
                     desenfileirar_Monstro(f);
-                    printf("\n*** VOCÊ DERROTOU O DIMAS! FIM DE JOGO! ***\n");
+                    printf("\n*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*\n");
+                    printf("*  VOCÊ DERROTOU O DIMAS! FIM DE JOGO!  *\n");
+                    printf("*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*\n\n");
                 }
                 else {
-                    printf("\nFim de jogo.\n");
+                    printf("\n=============== FIM DE JOGO ===============\n\n");
                 }
                 jogando = 0;
             }
             else {
-                printf("\nOpção Inválida!\n");
+                printf("\n  [!] Opção Inválida!\n");
+                continuar();
             }
             break;
         default:
-            printf("\nOpção Inválida!\n");
+            printf("\n  [!] Opção Inválida!\n");
+            continuar();
             break;
         }
     }
@@ -525,9 +623,11 @@ int main() {
     // inicializa números aleatórios para o dado (d12)
     srand(time(NULL));
 
-    printf("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n");
-    printf("           RPG Fatec           \n");
-    printf("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n");
+    printf("\n+===============================+\n");
+    printf("|                               |\n");
+    printf("|          RPG  FATEC           |\n");
+    printf("|                               |\n");
+    printf("+===============================+\n");
 
     personagem jogador;
 
