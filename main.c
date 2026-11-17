@@ -33,6 +33,8 @@ typedef struct Personagem {
     int xp;
     int ouro;
     item *inventario;
+    item *arma_eq;
+    item *armadura_eq;
 } personagem;
 
 typedef struct Monstro {
@@ -68,6 +70,36 @@ typedef struct Fila {
     no_monstro *inicio;
     no_monstro *fim;
 } fila;
+
+// item à venda na loja
+typedef struct ItemLoja {
+    char nome[20];
+    TipoItem tipo;
+    int efeito;
+    int preco;
+} item_loja;
+
+// catálogo da loja: o último da lista fica no topo da pilha
+const item_loja catalogoLoja[] = {
+    { "Poção de Cura", POCAO, 30, 10 },
+    { "Poção de Cura", POCAO, 30, 10 },
+    { "Poção de Cura", POCAO, 30, 10 },
+    { "Jaqueta da Fatec", ARMADURA, 3, 45 },
+    { "Faca de Plástico", ARMA, 4, 40 }
+};
+
+// calcula quantos itens tem no catálogo
+#define TOTAL_CATALOGO ((int)(sizeof(catalogoLoja) / sizeof(catalogoLoja[0])))
+
+// nó da pilha encadeada da loja
+typedef struct NoLoja {
+    item_loja dados;
+    struct NoLoja *prox;
+} no_loja;
+
+typedef struct Pilha {
+    no_loja *topo;
+} pilha;
 
 // pausa nos diálogos, turnos, etc
 void continuar() {
@@ -130,10 +162,30 @@ void criar_Personagem(personagem *j) {
     j->xp = 0;
     j->ouro = 20;
     j->inventario = NULL;
+    // slots de equipamentos vazios
+    j->arma_eq = NULL;
+    j->armadura_eq = NULL;
 }
 
 int xp_Necessario(int nivel) {
     return 20 * nivel;
+}
+
+// calcula ataque total (base + bônus da arma)
+int atq_Total(personagem *j) {
+    if (j->arma_eq != NULL) {
+        return j->atq + j->arma_eq->efeito;
+    }
+
+    return j->atq;
+}
+
+int def_Total(personagem *j) {
+    if (j->armadura_eq != NULL) {
+        return j->def + j->armadura_eq->efeito;
+    }
+
+    return j->def;
 }
 
 void mostrar_Personagem(personagem *j) {
@@ -141,8 +193,8 @@ void mostrar_Personagem(personagem *j) {
     printf("  @  Nome   : %s\n", j->nome);
     printf("  +  Nível  : %d\n", j->nivel);
     printf("  <3 Vida   : %d/%d\n", j->vida, j->vida_max);
-    printf("  /  Ataque : %d\n", j->atq);
-    printf("  #  Defesa : %d\n", j->def);
+    printf("  /  Ataque : %d (+%d da arma)\n", atq_Total(j), atq_Total(j) - j->atq);
+    printf("  #  Defesa : %d (+%d da armadura)\n", def_Total(j), def_Total(j) - j->def);
     printf("  *  XP     : %d/%d\n", j->xp, xp_Necessario(j->nivel));
     printf("  $  Ouro   : %d\n", j->ouro);
     printf("+=====================================+\n");
@@ -227,11 +279,79 @@ int remover_Item(personagem *j, const char *nome) {
     return 1;
 }
 
+// equipa o item da posição escolhida
+void equipar_Item(personagem *j, int posicao) {
+    // nó atual
+    item *atual = j->inventario;
+    // nó anterior ao atual
+    item *anterior = NULL;
+ 
+    // anda até a posição escolhida guardando o anterior
+    for (int i = 1; atual != NULL && i < posicao; i++) {
+        anterior = atual;
+        atual = atual->prox;
+    }
+ 
+    if (atual == NULL) {
+        printf("\n  [!] Item inválido!\n");
+        return;
+    }
+ 
+    if (atual->tipo == POCAO) {
+        printf("\n  [!] Poções não se equipam, elas são usadas na batalha.\n");
+        return;
+    }
+ 
+    // tira o nó da lista sem liberar a memória, porque ele vai para o slot
+    if (anterior == NULL) {
+        j->inventario = atual->prox;
+    }
+    else {
+        anterior->prox = atual->prox;
+    }
+    atual->prox = NULL;
+ 
+    // se já tinha algo equipado, devolve para o inventário
+    if (atual->tipo == ARMA) {
+        if (j->arma_eq != NULL) {
+            adicionar_Item(j, j->arma_eq->nome, j->arma_eq->tipo, j->arma_eq->efeito, j->arma_eq->valor);
+            free(j->arma_eq);
+        }
+        j->arma_eq = atual;
+        printf("\n  [+] Você equipou %s! (Ataque +%d)\n", atual->nome, atual->efeito);
+    }
+    else {
+        if (j->armadura_eq != NULL) {
+            adicionar_Item(j, j->armadura_eq->nome, j->armadura_eq->tipo, j->armadura_eq->efeito, j->armadura_eq->valor);
+            free(j->armadura_eq);
+        }
+        j->armadura_eq = atual;
+        printf("\n  [+] Você equipou %s! (Defesa +%d)\n", atual->nome, atual->efeito);
+    }
+}
+
 // imprime a lista de itens no inventário
 void mostrar_Inventario(personagem *j) {
     const char *tipos[] = {"Arma", "Armadura", "Poção"};
 
     printf("\n+============ INVENTÁRIO ============+\n");
+
+    // equipamentos vestidos no momento
+    if (j->arma_eq != NULL) {
+        printf("  Arma equipada     : %s (Ataque +%d)\n", j->arma_eq->nome, j->arma_eq->efeito);
+    }
+    else {
+        printf("  Arma equipada     : [nenhuma]\n");
+    }
+ 
+    if (j->armadura_eq != NULL) {
+        printf("  Armadura equipada : %s (Defesa +%d)\n", j->armadura_eq->nome, j->armadura_eq->efeito);
+    }
+    else {
+        printf("  Armadura equipada : [nenhuma]\n");
+    }
+ 
+    printf("  ------------------------------------\n");
 
     // se a cabeça for NULL, o inventário está vazio
     if (j->inventario == NULL) {
@@ -261,6 +381,28 @@ void mostrar_Inventario(personagem *j) {
     }
 }
 
+// inventário fora da batalha
+void gerenciar_Inventario(personagem *j) {
+    int escolha;
+ 
+    do {
+        mostrar_Inventario(j);
+ 
+        // sem itens na lista, não tem nada para equipar
+        if (j->inventario == NULL) {
+            continuar();
+            return;
+        }
+ 
+        printf("  0. Voltar\n>> Número do item para equipar: ");
+        escolha = ler_Inteiro();
+ 
+        if (escolha >= 1) {
+            equipar_Item(j, escolha);
+        }
+    } while (escolha != 0);
+}
+
 // apaga todos os nós
 void liberar_Inventario(personagem *j) {
     item *aux = j->inventario;
@@ -277,6 +419,12 @@ void liberar_Inventario(personagem *j) {
 
     // define o inventário como vazio
     j->inventario = NULL;
+
+    // apaga nós dos slots
+    free(j->arma_eq);
+    free(j->armadura_eq);
+    j->arma_eq = NULL;
+    j->armadura_eq = NULL;
 }
 
 // rola o d12 e calcula o dano do ataque
@@ -408,7 +556,7 @@ int batalha(personagem *j, monstro *m) {
             switch (opcao) {
                 case 1: {
                     printf("\n  >>> %s ataca!\n", j->nome);
-                    int dano = calcular_Dano(j->atq, m->def);
+                    int dano = calcular_Dano(atq_Total(j), m->def);
                     m->vida -= dano;
                     if (m->vida < 0) {
                         m->vida = 0;
@@ -438,7 +586,7 @@ int batalha(personagem *j, monstro *m) {
 
         // turno do monstro
         printf("\n  <<< %s ataca!\n", m->nome);
-        int dano = calcular_Dano(m->atq, j->def);
+        int dano = calcular_Dano(m->atq, def_Total(j));
 
         if (defendendo && dano > 1) {
             dano = (dano + 1) / 2;
@@ -534,6 +682,167 @@ monstro *ver_Primeiro(fila *f) {
 void liberar_Fila(fila *f) {
     while (desenfileirar_Monstro(f)) {
     }
+}
+
+// deixa a pilha vazia
+void criar_Pilha(pilha *p) {
+    p->topo = NULL;
+}
+
+// retorna 1 se a pilha não tem nenhum item
+int pilha_Vazia(pilha *p) {
+    return p->topo == NULL;
+}
+ 
+// push: o item novo vira o topo da pilha
+int empilhar_Loja(pilha *p, item_loja it) {
+    no_loja *novo = malloc(sizeof(no_loja));
+ 
+    if (novo == NULL) {
+        printf("[ERRO] Sem memória!\n");
+        return 0;
+    }
+ 
+    // o nó guarda uma cópia dos dados do item
+    novo->dados = it;
+    // o novo nó aponta para o antigo topo
+    novo->prox = p->topo;
+    p->topo = novo;
+ 
+    return 1;
+}
+ 
+// pop: tira o topo da pilha e devolve os dados em *aux (retorna 0 se estava vazia)
+int desempilhar_Loja(pilha *p, item_loja *aux) {
+    if (p->topo == NULL) {
+        return 0;
+    }
+ 
+    no_loja *removido = p->topo;
+    // guarda os dados antes de liberar o nó
+    *aux = removido->dados;
+    // o segundo passa a ser o topo
+    p->topo = removido->prox;
+ 
+    free(removido);
+ 
+    return 1;
+}
+ 
+// consulta o topo da pilha sem remover
+item_loja *ver_Topo(pilha *p) {
+    if (p->topo == NULL) {
+        return NULL;
+    }
+ 
+    return &p->topo->dados;
+}
+ 
+// move o nó do topo de uma pilha para o topo de outra, sem alocar nem liberar memória
+void mover_Topo(pilha *origem, pilha *destino) {
+    if (origem->topo == NULL) {
+        return;
+    }
+ 
+    no_loja *no = origem->topo;
+    // tira o nó da origem
+    origem->topo = no->prox;
+    // coloca o mesmo nó no topo do destino
+    no->prox = destino->topo;
+    destino->topo = no;
+}
+ 
+// libera todos os nós (desempilha)
+void liberar_Pilha(pilha *p) {
+    item_loja descarte;
+ 
+    while (desempilhar_Loja(p, &descarte)) {
+    }
+}
+ 
+// loja depois de cada luta: o vendedor mostra o item do topo da maleta (pilha)
+void abrir_Loja(personagem *j, pilha *maleta) {
+    const char *tipos[] = {"Arma", "Armadura", "Poção"};
+    // pilha auxiliar: guarda os itens que o jogador já viu e não comprou
+    pilha vistos;
+    int comprando = 1;
+ 
+    criar_Pilha(&vistos);
+ 
+    printf("\n[$] A vendedora Angelina surge no corredor e abre a maleta:\n");
+    printf("    \"Psiu! Quer comprar alguma coisa?\"\n");
+ 
+    while (comprando) {
+        // consulta o topo sem remover
+        item_loja *topo = ver_Topo(maleta);
+ 
+        printf("\n+================== LOJA ==================+\n");
+        printf("  $  Seu ouro: %d\n\n", j->ouro);
+ 
+        // maleta vazia
+        if (topo == NULL) {
+            if (pilha_Vazia(&vistos)) {
+                printf("  [!] O vendedor já vendeu tudo!\n");
+            }
+            else {
+                printf("  [i] Esse era o último item da maleta.\n");
+            }
+            break;
+        }
+ 
+        printf("  [%s] %s  >>  ", tipos[topo->tipo], topo->nome);
+ 
+        switch (topo->tipo) {
+            case ARMA:
+                printf("Ataque +%d", topo->efeito);
+                break;
+            case ARMADURA:
+                printf("Defesa +%d", topo->efeito);
+                break;
+            case POCAO:
+                printf("Cura +%d", topo->efeito);
+                break;
+        }
+ 
+        printf("  ($ %d ouro(s))\n", topo->preco);
+        printf("\n  [1] Comprar\n  [2] Ver o próximo item\n  [0] Sair da loja\n>> Opção: ");
+        int opcao = ler_Inteiro();
+ 
+        switch (opcao) {
+            case 1:
+                if (j->ouro < topo->preco) {
+                    printf("\n  [!] Você precisa de mais %d de ouro.\n", topo->preco - j->ouro);
+                }
+                else {
+                    item_loja comprado;
+ 
+                    // pop: o item sai da maleta e não volta mais
+                    desempilhar_Loja(maleta, &comprado);
+                    j->ouro -= comprado.preco;
+                    // o valor de revenda do item é metade do preço
+                    adicionar_Item(j, comprado.nome, comprado.tipo, comprado.efeito, comprado.preco / 2);
+                    printf("\n  [+] Você comprou %s por %d de ouro! (ouro restante: %d)\n", comprado.nome, comprado.preco, j->ouro);
+                }
+                break;
+            case 2:
+                // o item do topo vai para a pilha auxiliar e o próximo aparece
+                mover_Topo(maleta, &vistos);
+                break;
+            case 0:
+                comprando = 0;
+                break;
+            default:
+                printf("\n  [!] Opção inválida!\n");
+                break;
+        }
+    }
+ 
+    // devolve os itens vistos para a maleta (mover de volta inverte de novo e restaura a ordem)
+    while (!pilha_Vazia(&vistos)) {
+        mover_Topo(&vistos, maleta);
+    }
+ 
+    printf("\n  [i] Você se despede do vendedor.\n");
 }
 
 // cura a vida sem passar do máximo e devolve quanto foi curado
@@ -666,7 +975,7 @@ void evento_Bau(personagem *j) {
 }
 
 // sorteia o que acontece no explorar
-int explorar(personagem *j, fila *f) {
+int explorar(personagem *j, fila *f, pilha *maleta) {
     int d12 = rolar_D12();
     printf("\n[EXPLORAR] Você explora a Fatec... (d12 = %d)\n", d12);
 
@@ -698,13 +1007,15 @@ int explorar(personagem *j, fila *f) {
 
             // se venceu, o monstro sai da fila
             desenfileirar_Monstro(f);
+            // após cada luta, a loja abre
+            abrir_Loja(j, maleta);
         }
     }
 
     return 1;
 }
 
-void menu(personagem *j, fila *f) {
+void menu(personagem *j, fila *f, pilha *maleta) {
     int jogando = 1;
 
     while (jogando) {
@@ -725,7 +1036,7 @@ void menu(personagem *j, fila *f) {
 
         switch (opcao) {
             case 1:
-                if (!explorar(j, f)) {
+                if (!explorar(j, f, maleta)) {
                     printf("\n=============== FIM DE JOGO ===============\n");
                     jogando = 0;
                 }
@@ -735,8 +1046,7 @@ void menu(personagem *j, fila *f) {
                 continuar();
                 break;
             case 3:
-                mostrar_Inventario(j);
-                continuar();
+                gerenciar_Inventario(j);
                 break;
             case 4:
                 jogando = 0;
@@ -786,6 +1096,8 @@ int main() {
 
     fila filaMonstros;
 
+    pilha maleta;
+
     criar_Personagem(&jogador);
     // item inicial do inventário
     adicionar_Item(&jogador, "Poção de Cura", POCAO, 30, 5);
@@ -801,9 +1113,21 @@ int main() {
         }
     }
 
-    menu(&jogador, &filaMonstros);
+    // monta a maleta do vendedor
+    criar_Pilha(&maleta);
+    for (int i = 0; i < TOTAL_CATALOGO; i++) {
+        if (!empilhar_Loja(&maleta, catalogoLoja[i])) {
+            liberar_Pilha(&maleta);
+            liberar_Fila(&filaMonstros);
+            liberar_Inventario(&jogador);
+            return 1;
+        }
+    }
+
+    menu(&jogador, &filaMonstros, &maleta);
 
     // libera toda a memória alocada
+    liberar_Pilha(&maleta);
     liberar_Fila(&filaMonstros);
     liberar_Inventario(&jogador);
     return 0;
